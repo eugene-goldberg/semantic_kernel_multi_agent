@@ -26,20 +26,31 @@ def get_openai_client():
     # Load environment variables
     load_dotenv()
     
+    # Set environment variables from .env.deploy file
+    with open(".env.deploy", "r") as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, value = line.strip().split("=", 1)
+                os.environ[key] = value
+                
     # Check required variables
-    if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME]):
+    if not all([os.getenv("AZURE_OPENAI_ENDPOINT"), os.getenv("AZURE_OPENAI_API_KEY"), os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")]):
         raise ValueError("Missing required environment variables for Azure OpenAI")
     
     try:
         # Initialize OpenAI client
         client = AzureOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version="2024-05-01-preview"
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_version="2024-02-15-preview"  # Use version that works for Azure
         )
+        print(f"Successfully connected to Azure OpenAI at {os.getenv('AZURE_OPENAI_ENDPOINT')}")
         return client
     except Exception as e:
         print(f"Error creating Azure OpenAI client: {str(e)}")
+        print(f"ENDPOINT: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
+        print(f"DEPLOYMENT: {os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')}")
+        print(f"API KEY: {os.getenv('AZURE_OPENAI_API_KEY')[:5]}...")
         raise
 
 def list_existing_assistants(client):

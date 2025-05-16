@@ -6,7 +6,16 @@
       "Bash(pip show:*)",
       "Bash(pip install:*)",
       "Bash(source:*)",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(python:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(chmod:*)",
+      "Bash(az:*)",
+      "Bash(azd:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Orchestration system using Semantic Kernel to delegate from chat agent to weather agent.
-This uses a simpler approach compatible with Semantic Kernel 1.30.0,
-and correctly invokes chat completion services with function calling.
+Test script for Semantic Kernel orchestration.
+This version avoids the interactive chat loop and just runs a test query.
 """
 
 import os
@@ -16,24 +15,29 @@ from semantic_kernel.functions.kernel_arguments import KernelArguments
 
 # Add the project root to the path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-sys.path.insert(0, project_root)
+sys.path.insert(0, current_dir)
 
 from src.agents.plugins.weather_plugin import WeatherPlugin
 from src.services.weather_service import WeatherService
 
 def setup_kernel_with_openai():
     """Set up a kernel with Azure OpenAI"""
-    # Load environment variables
-    load_dotenv()
+    # Set required environment variables
+    os.environ["AZURE_OPENAI_ENDPOINT"] = "https://sk-multi-agent-openai.openai.azure.com/"
+    os.environ["AZURE_OPENAI_API_KEY"] = "48d4df6c7b5a49f38d7675620f8e3aa0"
+    os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"] = "gpt-35-turbo"
     
     # Get Azure OpenAI configuration
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
     
+    print(f"Endpoint: {endpoint}")
+    print(f"Deployment: {deployment}")
+    print(f"API Key: {api_key[:5]}...")
+    
     if not all([endpoint, api_key, deployment]):
-        raise ValueError("Azure OpenAI configuration not found in .env file")
+        raise ValueError("Azure OpenAI configuration not found in environment variables")
     
     # Create a kernel
     kernel = sk.Kernel()
@@ -63,7 +67,6 @@ async def setup_weather_plugin(kernel):
     from semantic_kernel.functions import KernelPlugin
     
     # Use from_object to create a plugin from our weather plugin object
-    # The first argument is the plugin name (string), the second is the instance.
     weather_plugin = KernelPlugin.from_object(
         "WeatherPlugin",      # Plugin name (string)
         weather_plugin_obj,   # Plugin instance
@@ -74,11 +77,8 @@ async def setup_weather_plugin(kernel):
     
     return weather_plugin
 
-async def chat_with_function_calling(kernel, input_text, chat_history_list=None):
+async def chat_with_function_calling(kernel, input_text):
     """Chat with the model using function calling to trigger the weather plugin"""
-    if chat_history_list is None:
-        chat_history_list = [] 
-    
     system_message = """
     You are a helpful assistant that provides friendly, concise, and accurate information.
     When the user asks about weather, you should use the GetWeather function to get accurate weather information.
@@ -93,7 +93,6 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
     """
     
     current_messages = [{"role": "system", "content": system_message}]
-    current_messages.extend(chat_history_list) 
     current_messages.append({"role": "user", "content": input_text})
     
     tools = [
@@ -195,52 +194,46 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
     
     return content, processed_function_calls
 
-async def orchestration_chat():
-    """Run the orchestration chat"""
+async def test_orchestration():
+    """Test the orchestration with a weather query"""
     print("Setting up Semantic Kernel orchestration...")
     
     kernel = setup_kernel_with_openai()
     await setup_weather_plugin(kernel)
     
-    print("\nWelcome to the Multi-Agent Chat!")
-    print("You can ask general questions or about the weather.")
-    print("Type 'exit' to quit.")
+    print("\nTesting weather query...")
     
-    chat_history_list = [] 
+    test_query = "What's the weather like in Seattle right now?"
+    print(f"Query: {test_query}")
     
-    while True:
-        try:
-            user_input = input("\nYou: ")
-            if user_input.lower() == "exit":
-                print("Exiting chat...")
-                break
-            if not user_input.strip():
-                continue
-                
-            response_content, f_calls = await chat_with_function_calling(
-                kernel, 
-                user_input,
-                chat_history_list
-            )
-            
-            chat_history_list.append({"role": "user", "content": user_input})
-            if response_content:
-                 chat_history_list.append({"role": "assistant", "content": response_content})
-            
-            if f_calls:
-                print("\n[Function calls processed]")
-            
-            print(f"Agent: {response_content}")
-            
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
+    response_content, f_calls = await chat_with_function_calling(kernel, test_query)
+    
+    if f_calls:
+        print("\n[Function calls processed]")
+        for call in f_calls:
+            print(f"Called: {call['name']}")
+            print(f"Args: {call['arguments']}")
+            print(f"Result: {call['result']}")
+    
+    print(f"\nResponse: {response_content}")
+    
+    # Test a non-weather query
+    print("\nTesting general knowledge query...")
+    
+    general_query = "What is the capital of France?"
+    print(f"Query: {general_query}")
+    
+    response_content, f_calls = await chat_with_function_calling(kernel, general_query)
+    
+    if f_calls:
+        print("\n[Function calls processed]")
+    
+    print(f"\nResponse: {response_content}")
 
 async def main():
     """Main entry point"""
     try:
-        await orchestration_chat()
+        await test_orchestration()
     except Exception as e:
         print(f"Error: {str(e)}")
         import traceback

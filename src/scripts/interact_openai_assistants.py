@@ -27,15 +27,25 @@ class OpenAIAssistantClient:
         # Load environment variables
         load_dotenv()
         
+        # Set environment variables from .env.deploy file if it exists
+        try:
+            with open(".env.deploy", "r") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        os.environ[key] = value
+        except Exception as e:
+            print(f"Warning: Could not load .env.deploy: {str(e)}")
+        
         # Check required variables
-        if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY]):
+        if not all([os.getenv("AZURE_OPENAI_ENDPOINT"), os.getenv("AZURE_OPENAI_API_KEY")]):
             raise ValueError("Missing required environment variables for Azure OpenAI")
         
         # Initialize OpenAI client
         self.client = AzureOpenAI(
-            azure_endpoint=AZURE_OPENAI_ENDPOINT,
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version="2024-05-01-preview"
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_version="2024-02-15-preview"  # Use version that works for Azure
         )
         
         # Load agent IDs
@@ -43,7 +53,7 @@ class OpenAIAssistantClient:
         self.current_thread_id = None
         
         # Print API info
-        print(f"Connected to Azure OpenAI at: {AZURE_OPENAI_ENDPOINT}")
+        print(f"Connected to Azure OpenAI at: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
     
     def load_deployed_agents(self):
         """Load deployed agent IDs from file"""

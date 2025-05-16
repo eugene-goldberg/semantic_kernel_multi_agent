@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Orchestration system using Semantic Kernel to delegate from chat agent to weather agent.
-This uses a simpler approach compatible with Semantic Kernel 1.30.0,
-and correctly invokes chat completion services with function calling.
+Test script for orchestration system using Semantic Kernel to delegate from chat agent to weather agent.
+This version uses predefined inputs instead of waiting for interactive user input.
 """
 
 import os
@@ -13,6 +12,7 @@ from dotenv import load_dotenv
 import semantic_kernel as sk
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion, AzureChatPromptExecutionSettings
 from semantic_kernel.functions.kernel_arguments import KernelArguments
+from semantic_kernel.chat_history import ChatHistory, ChatMessageContent
 
 # Add the project root to the path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -63,7 +63,6 @@ async def setup_weather_plugin(kernel):
     from semantic_kernel.functions import KernelPlugin
     
     # Use from_object to create a plugin from our weather plugin object
-    # The first argument is the plugin name (string), the second is the instance.
     weather_plugin = KernelPlugin.from_object(
         "WeatherPlugin",      # Plugin name (string)
         weather_plugin_obj,   # Plugin instance
@@ -92,9 +91,19 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
     For other questions, answer directly from your knowledge.
     """
     
-    current_messages = [{"role": "system", "content": system_message}]
-    current_messages.extend(chat_history_list) 
-    current_messages.append({"role": "user", "content": input_text})
+    # Create a ChatHistory object
+    chat_history = ChatHistory()
+    chat_history.add_system_message(system_message)
+    
+    # Add all messages from chat_history_list
+    for message in chat_history_list:
+        if message["role"] == "user":
+            chat_history.add_user_message(message["content"])
+        elif message["role"] == "assistant":
+            chat_history.add_assistant_message(message["content"])
+    
+    # Add the current user message
+    chat_history.add_user_message(input_text)
     
     tools = [
         {
@@ -130,8 +139,8 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
         tools=tools
     )
 
-    response_messages = await chat_service.complete_chat_async(
-        messages=current_messages,
+    response_messages = await chat_service.get_chat_message_contents(
+        chat_history=chat_history,
         settings=settings
     )
 
@@ -170,19 +179,30 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
                     "result": weather_data
                 })
                 
-                followup_messages_list = list(current_messages)
-                followup_messages_list.append(assistant_response_message.to_dict())
-
-                followup_messages_list.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": weather_data
-                })
+                # Create a new chat history for the follow-up
+                followup_chat_history = ChatHistory()
+                followup_chat_history.add_system_message(system_message)
+                
+                # Add all previous messages
+                for message in chat_history_list:
+                    if message["role"] == "user":
+                        followup_chat_history.add_user_message(message["content"])
+                    elif message["role"] == "assistant":
+                        followup_chat_history.add_assistant_message(message["content"])
+                
+                # Add current user message
+                followup_chat_history.add_user_message(input_text)
+                
+                # Add the assistant's response
+                followup_chat_history.add_assistant_message(content=assistant_response_message.content, tool_calls=assistant_response_message.tool_calls)
+                
+                # Add the tool response
+                followup_chat_history.add_tool_message(tool_call.id, weather_data)
                 
                 final_settings = AzureChatPromptExecutionSettings(tool_choice="none") 
 
-                final_response_messages = await chat_service.complete_chat_async(
-                    messages=followup_messages_list,
+                final_response_messages = await chat_service.get_chat_message_contents(
+                    chat_history=followup_chat_history,
                     settings=final_settings
                 )
                 
@@ -195,52 +215,52 @@ async def chat_with_function_calling(kernel, input_text, chat_history_list=None)
     
     return content, processed_function_calls
 
-async def orchestration_chat():
-    """Run the orchestration chat"""
+async def test_orchestration():
+    """Run the orchestration with predefined inputs"""
     print("Setting up Semantic Kernel orchestration...")
     
     kernel = setup_kernel_with_openai()
     await setup_weather_plugin(kernel)
     
-    print("\nWelcome to the Multi-Agent Chat!")
-    print("You can ask general questions or about the weather.")
-    print("Type 'exit' to quit.")
+    print("\nStarting orchestration test with predefined inputs...")
     
     chat_history_list = [] 
     
-    while True:
-        try:
-            user_input = input("\nYou: ")
-            if user_input.lower() == "exit":
-                print("Exiting chat...")
-                break
-            if not user_input.strip():
-                continue
-                
-            response_content, f_calls = await chat_with_function_calling(
-                kernel, 
-                user_input,
-                chat_history_list
-            )
-            
-            chat_history_list.append({"role": "user", "content": user_input})
-            if response_content:
-                 chat_history_list.append({"role": "assistant", "content": response_content})
-            
-            if f_calls:
-                print("\n[Function calls processed]")
-            
-            print(f"Agent: {response_content}")
-            
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
+    # Test cases
+    test_inputs = [
+        "What's the capital of France?",
+        "What's the weather like in Seattle?",
+        "Will it rain tomorrow in Chicago?",
+        "Tell me about the weather in New York",
+        "How do I make pasta?"
+    ]
+    
+    for user_input in test_inputs:
+        print("\n" + "-" * 60)
+        print(f"User: {user_input}")
+        
+        response_content, f_calls = await chat_with_function_calling(
+            kernel, 
+            user_input,
+            chat_history_list
+        )
+        
+        chat_history_list.append({"role": "user", "content": user_input})
+        if response_content:
+            chat_history_list.append({"role": "assistant", "content": response_content})
+        
+        if f_calls:
+            print("\n[Function calls processed]")
+            print(f"Function: {f_calls[0]['name']}")
+            print(f"Arguments: {f_calls[0]['arguments']}")
+            print(f"Result: {f_calls[0]['result']}")
+        
+        print(f"Agent: {response_content}")
 
 async def main():
     """Main entry point"""
     try:
-        await orchestration_chat()
+        await test_orchestration()
     except Exception as e:
         print(f"Error: {str(e)}")
         import traceback
