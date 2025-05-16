@@ -1,0 +1,10 @@
+semantic-kernel[azure]>=1.1.1
+azure-ai-projects
+azure-identity
+python-dotenv
+fastapi
+uvicorn
+httpx
+requests
+python-multipart
+colorama
