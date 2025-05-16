@@ -28,6 +28,17 @@ class OrchestrationClient:
         # Load environment variables
         load_dotenv()
         
+        # Try to load from .env.deploy if it exists, but don't fail if it doesn't
+        try:
+            if os.path.exists(".env.deploy"):
+                with open(".env.deploy", "r") as f:
+                    for line in f:
+                        if line.strip() and not line.startswith("#"):
+                            key, value = line.strip().split("=", 1)
+                            os.environ[key] = value
+        except Exception as e:
+            print(f"Note: Could not load .env.deploy: {str(e)}. Using environment variables instead.")
+        
         # Check required variables
         if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY]):
             raise ValueError("Missing required environment variables for Azure OpenAI")
@@ -36,7 +47,7 @@ class OrchestrationClient:
         self.client = AzureOpenAI(
             azure_endpoint=AZURE_OPENAI_ENDPOINT,
             api_key=AZURE_OPENAI_API_KEY,
-            api_version="2024-05-01-preview"
+            api_version="2024-02-15-preview"  # Use version that works with Azure
         )
         
         # Initialize weather service for function calls

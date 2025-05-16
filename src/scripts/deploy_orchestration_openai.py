@@ -26,34 +26,35 @@ def get_openai_client():
     # Load environment variables
     load_dotenv()
     
-    # Set environment variables from .env.deploy file if exists
+    # Try to load from .env.deploy if it exists, but don't fail if it doesn't
     try:
-        with open(".env.deploy", "r") as f:
-            for line in f:
-                if line.strip() and not line.startswith("#"):
-                    key, value = line.strip().split("=", 1)
-                    os.environ[key] = value
+        if os.path.exists(".env.deploy"):
+            with open(".env.deploy", "r") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        os.environ[key] = value
     except Exception as e:
-        print(f"Warning: Could not load .env.deploy: {str(e)}")
+        print(f"Note: Could not load .env.deploy: {str(e)}. Using environment variables instead.")
     
     # Check required variables
-    if not all([os.getenv("AZURE_OPENAI_ENDPOINT"), os.getenv("AZURE_OPENAI_API_KEY"), os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")]):
+    if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT_NAME]):
         raise ValueError("Missing required environment variables for Azure OpenAI")
     
     try:
         # Initialize OpenAI client
         client = AzureOpenAI(
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            azure_endpoint=AZURE_OPENAI_ENDPOINT,
+            api_key=AZURE_OPENAI_API_KEY,
             api_version="2024-02-15-preview"  # Use version that works with Azure
         )
-        print(f"Successfully connected to Azure OpenAI at {os.getenv('AZURE_OPENAI_ENDPOINT')}")
+        print(f"Successfully connected to Azure OpenAI at {AZURE_OPENAI_ENDPOINT}")
         return client
     except Exception as e:
         print(f"Error creating Azure OpenAI client: {str(e)}")
-        print(f"ENDPOINT: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
-        print(f"DEPLOYMENT: {os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')}")
-        print(f"API KEY: {os.getenv('AZURE_OPENAI_API_KEY')[:5]}...")
+        print(f"ENDPOINT: {AZURE_OPENAI_ENDPOINT}")
+        print(f"DEPLOYMENT: {AZURE_OPENAI_DEPLOYMENT_NAME}")
+        print(f"API KEY: {AZURE_OPENAI_API_KEY[:5]}...")
         raise
 
 def load_existing_agents():
@@ -124,7 +125,7 @@ def save_deployment_info(chat_agent_id, weather_agent_id, orchestrator_id):
             "chat_agent_id": chat_agent_id,
             "weather_agent_id": weather_agent_id,
             "orchestrator_agent_id": orchestrator_id,
-            "project_host": os.getenv("AZURE_OPENAI_ENDPOINT").replace("https://", "").replace("/", ""),
+            "project_host": AZURE_OPENAI_ENDPOINT.replace("https://", "").replace("/", ""),
             "project_name": "azure-openai-assistants"
         }
         
@@ -151,7 +152,7 @@ def main():
         # Create orchestrator agent
         orchestrator_id = create_orchestrator_agent(
             client, 
-            os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            AZURE_OPENAI_DEPLOYMENT_NAME,
             chat_agent_id, 
             weather_agent_id
         )

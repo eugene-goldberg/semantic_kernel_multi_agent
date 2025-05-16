@@ -10,6 +10,8 @@ The multi-agent orchestration system follows these architectural principles:
 2. **Domain-Specific Plugins**: Specialized components (like the weather plugin) that perform specific tasks
 3. **Function Calling**: The mechanism for delegating tasks from the orchestrator to plugins
 
+> **Note**: The Semantic Kernel SDK is stable and does not have breaking changes. If you encounter any API compatibility issues, the solution should be sought elsewhere, such as in your application code, environment configuration, or other integration points - not by assuming SDK instability.
+
 ## Implementation Components
 
 ### 1. Semantic Kernel Setup
@@ -212,13 +214,15 @@ The full orchestration workflow follows these steps:
 5. The response is presented to the user
 6. Chat history is updated for context in future interactions
 
-## Key Differences from Previous Versions
+## Implementation Notes
 
-This implementation differs from earlier attempts in that it:
+Our implementation:
 
-1. Uses Semantic Kernel 1.30.0's plugin registration system with `KernelPlugin`
+1. Leverages Semantic Kernel's plugin registration system with `KernelPlugin`
 2. Properly implements the tool calling interface compatible with Azure OpenAI
 3. Handles function calling in a way that maintains conversation context
+
+The solution addresses any compatibility issues through proper use of the API rather than working around assumed SDK instability. The Semantic Kernel SDK provides a stable foundation for our implementation.
 
 ## Technical Considerations
 

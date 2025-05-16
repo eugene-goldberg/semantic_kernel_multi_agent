@@ -1,0 +1,66 @@
+name: Deploy to Azure OpenAI
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: 'Type of deployment to run'
+        required: true
+        default: 'agents'
+        type: choice
+        options:
+          - agents
+          - orchestration
+          - both
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    env:
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      AZURE_AI_HUB_NAME: ${{ secrets.AZURE_AI_HUB_NAME }}
+      AZURE_AI_PROJECT_NAME: ${{ secrets.AZURE_AI_PROJECT_NAME }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Deploy Agents
+        if: ${{ github.event.inputs.deployment_type == 'agents' || github.event.inputs.deployment_type == 'both' }}
+        run: |
+          echo "Deploying agents to Azure OpenAI..."
+          python src/scripts/deploy_openai_assistants.py
+      
+      - name: Deploy Orchestration
+        if: ${{ github.event.inputs.deployment_type == 'orchestration' || github.event.inputs.deployment_type == 'both' }}
+        run: |
+          echo "Deploying orchestration to Azure OpenAI..."
+          python src/scripts/deploy_orchestration_openai.py
+      
+      - name: Run Tests
+        run: |
+          echo "Running tests on deployed agents..."
+          python test_orchestrated_agents.py
+      
+      - name: Upload Deployment Info
+        uses: actions/upload-artifact@v2
+        with:
+          name: deployment-info
+          path: |
+            deployment_info.json
+            orchestration_deployment_info.json

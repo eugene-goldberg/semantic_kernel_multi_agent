@@ -14,12 +14,35 @@ from dotenv import load_dotenv
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
+from src.config.settings import (
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_API_KEY
+)
+
 def get_client():
     """Initialize OpenAI client with Azure credentials"""
+    # Load environment variables
+    load_dotenv()
+    
+    # Try to load from .env.deploy if it exists, but don't fail if it doesn't
+    try:
+        if os.path.exists(".env.deploy"):
+            with open(".env.deploy", "r") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        os.environ[key] = value
+    except Exception as e:
+        print(f"Note: Could not load .env.deploy: {str(e)}. Using environment variables instead.")
+    
+    # Check required variables
+    if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY]):
+        raise ValueError("Missing required environment variables for Azure OpenAI")
+    
     # Set up Azure OpenAI client
     client = AzureOpenAI(
-        azure_endpoint="https://sk-multi-agent-openai.openai.azure.com/",
-        api_key="48d4df6c7b5a49f38d7675620f8e3aa0",
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_API_KEY,
         api_version="2024-02-15-preview"
     )
     return client

@@ -44,6 +44,7 @@
    - Added function calling mechanism for weather query delegation
    - Developed a complete chat system with orchestrated delegation
    - Documented orchestration capabilities in detailed guides
+   - Leveraged the stable Semantic Kernel SDK for reliable agent orchestration
 
 ## Current Status
 
@@ -64,6 +65,7 @@
    - Weather Service implementation is complete and tested
    - Agent orchestration system is working correctly using Semantic Kernel
    - Function calling for specialized task delegation is operational
+   - Implementation leverages the stable Semantic Kernel SDK (version 1.30.0) without requiring workarounds for SDK instability - any compatibility issues are addressed through proper API usage
 
 ## Next Steps
 

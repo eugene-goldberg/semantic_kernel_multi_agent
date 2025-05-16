@@ -26,12 +26,16 @@ def get_openai_client():
     # Load environment variables
     load_dotenv()
     
-    # Set environment variables from .env.deploy file
-    with open(".env.deploy", "r") as f:
-        for line in f:
-            if line.strip() and not line.startswith("#"):
-                key, value = line.strip().split("=", 1)
-                os.environ[key] = value
+    # Try to load from .env.deploy if it exists, but don't fail if it doesn't
+    try:
+        if os.path.exists(".env.deploy"):
+            with open(".env.deploy", "r") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        os.environ[key] = value
+    except Exception as e:
+        print(f"Note: Could not load .env.deploy: {str(e)}. Using environment variables instead.")
                 
     # Check required variables
     if not all([os.getenv("AZURE_OPENAI_ENDPOINT"), os.getenv("AZURE_OPENAI_API_KEY"), os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")]):
