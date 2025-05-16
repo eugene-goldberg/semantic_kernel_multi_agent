@@ -6,6 +6,7 @@ This project demonstrates building a multi-agent application using Microsoft Sem
 
 - Chat completion agent for general conversation
 - Weather agent for providing weather information
+- Calculator agent for mathematical operations
 - **Agent Orchestration**: Capability for chat agent to delegate tasks to specialized agents
 - Deployment to Azure AI Agent Service and Azure OpenAI
 - Local testing with a CLI client
@@ -229,10 +230,12 @@ python src/scripts/orchestrate_with_kernel.py
 ```
 
 You can then ask questions like:
-- "What's the weather like in Seattle?"
-- "Will it rain tomorrow in New York?"
+- "What's the weather like in Seattle?" (routes to Weather Agent)
+- "Will it rain tomorrow in New York?" (routes to Weather Agent)
+- "Calculate the square root of 64" (routes to Calculator Agent)
+- "What is 15% of 230?" (routes to Calculator Agent)
 
-The chat agent will automatically detect these as weather queries and delegate to the weather agent.
+The chat agent will automatically detect the query type and delegate to the appropriate specialized agent.
 
 ## License
 

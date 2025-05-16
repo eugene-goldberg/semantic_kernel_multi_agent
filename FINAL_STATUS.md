@@ -6,7 +6,8 @@ We have successfully implemented a complete multi-agent system using Microsoft S
 
 1. **Chat Agent**: A general-purpose conversational agent
 2. **Weather Agent**: A specialized agent for weather information
-3. **Orchestrator Agent**: An agent that routes queries to the appropriate specialized agent
+3. **Calculator Agent**: A specialized agent for mathematical operations
+4. **Orchestrator Agent**: An agent that routes queries to the appropriate specialized agent
 
 ## Deployments
 
@@ -14,7 +15,8 @@ All agents are successfully deployed to Azure OpenAI:
 
 - **Chat Agent**: asst_Psx1vZD4DDuuuuI2Dwk4OkOL
 - **Weather Agent**: asst_qzuXJV5Y3y61iUVpAJn2LU54
-- **Orchestrator Agent**: asst_5e36ybItgzdgqqO00gsTYIoj
+- **Calculator Agent**: asst_wfHsDnDao5nEtcq5OFqMdWcT
+- **Orchestrator Agent**: asst_UveL0nlfSE4CqHODnKIPqf59
 
 ## Key Components
 
@@ -23,7 +25,12 @@ All agents are successfully deployed to Azure OpenAI:
 - Improved with hardcoded coordinates for common US cities
 - Provides both current weather and forecasts
 
-### 2. Agent Orchestration
+### 2. Calculator Service
+- Implemented mathematical operations capabilities
+- Supports basic arithmetic, equation solving, and conversions
+- Designed for accurate and clear mathematical explanations
+
+### 3. Agent Orchestration
 - Successfully implemented using Semantic Kernel 1.30.0
 - Fixed compatibility issues with the current API
 - Working both locally and in Azure
@@ -42,7 +49,9 @@ The system was thoroughly tested and works correctly:
 2. **Azure Testing**: The deployed agents function as expected:
    - Orchestrator correctly routes queries based on content
    - Weather agent returns accurate weather information
+   - Calculator agent performs mathematical operations correctly
    - Chat agent handles general knowledge questions
+   - End-to-end orchestration testing successfully passes all test cases
 
 ## Challenges Solved
 
@@ -67,6 +76,7 @@ Key scripts included in the repository:
 3. **Testing**:
    - `comprehensive_test.py`: Full dialog testing for local orchestration
    - `test_orchestrated_agents.py`: Non-interactive testing for Azure deployment
+   - `test_end_to_end_orchestration.py`: End-to-end testing of orchestration routing
    - `fixed_orchestration_test.py`: SK 1.30.0-compatible orchestration test
 
 4. **Maintenance**:

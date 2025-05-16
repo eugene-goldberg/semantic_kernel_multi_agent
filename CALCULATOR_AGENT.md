@@ -120,6 +120,26 @@ To test the Calculator Agent locally:
 python3 test_calculator_agent.py
 ```
 
+### End-to-End Orchestration Testing
+
+We have successfully validated the Calculator Agent as part of our end-to-end orchestration testing:
+
+```bash
+python3 test_end_to_end_orchestration.py
+```
+
+The test results confirmed:
+1. The Orchestrator correctly identifies and routes mathematical queries to the Calculator Agent
+2. The Calculator Agent successfully processes mathematical operations
+3. Responses include clear step-by-step explanations of calculations
+
+Example test case:
+- Query: "Calculate the square root of 64"
+- Orchestrator correctly routed to Calculator Agent
+- Calculator Agent provided the answer "8" with clear explanation
+
+All orchestration tests passed successfully, confirming that the multi-agent system correctly delegates mathematical operations to the Calculator Agent.
+
 ## Technical Details
 
 ### Dependencies
