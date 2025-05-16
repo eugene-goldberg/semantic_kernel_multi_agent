@@ -9,10 +9,16 @@ from openai import AzureOpenAI
 
 def get_client():
     """Initialize OpenAI client with Azure credentials"""
+    from dotenv import load_dotenv
+    import os
+    
+    # Load environment variables
+    load_dotenv()
+    
     # Set up Azure OpenAI client
     client = AzureOpenAI(
-        azure_endpoint="https://sk-multi-agent-openai.openai.azure.com/",
-        api_key="48d4df6c7b5a49f38d7675620f8e3aa0",
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version="2024-02-15-preview"
     )
     return client
@@ -28,6 +34,7 @@ def get_current_agent_ids():
             current_ids.add(info.get("orchestrator_agent_id"))
             current_ids.add(info.get("chat_agent_id"))
             current_ids.add(info.get("weather_agent_id"))
+            current_ids.add(info.get("calculator_agent_id"))
     except Exception as e:
         print(f"Warning: Could not load orchestration deployment info: {e}")
     
