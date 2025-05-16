@@ -70,7 +70,7 @@
 ## Next Steps
 
 1. **Orchestration Enhancements**
-   - Add more specialized agents beyond weather (e.g., calendar, news)
+   - ✅ Added specialized Calculator Agent with advanced mathematical capabilities
    - Implement more complex orchestration patterns
    - Add memory capabilities for context retention
    - Create a unified UI for interacting with orchestrated agents
