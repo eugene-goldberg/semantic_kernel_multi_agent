@@ -163,6 +163,32 @@ class AiFoundryDeploymentManager:
                     }
                 }
                 tools.append(calculator_tool)
+                
+            if agent_type == "orchestrator":
+                # Add routing tool definition for orchestrator
+                routing_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": "RouteToAgent",
+                        "description": "Route a query to a specific specialist agent",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "agent_type": {
+                                    "type": "string",
+                                    "enum": ["chat", "weather", "calculator"],
+                                    "description": "The type of agent to route to"
+                                },
+                                "query": {
+                                    "type": "string",
+                                    "description": "The query to send to the agent"
+                                }
+                            },
+                            "required": ["agent_type", "query"]
+                        }
+                    }
+                }
+                tools.append(routing_tool)
             
             # Create the agent payload
             agent_payload = {
