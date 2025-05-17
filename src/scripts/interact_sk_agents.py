@@ -16,56 +16,77 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, project_root)
 
-import semantic_kernel as sk
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.functions.kernel_arguments import KernelArguments
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import *
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class SkAgentClient:
-    """Client for interacting with SK-based agents deployed to Azure."""
+    """Client for interacting with SK-based agents deployed to Azure AI Service."""
     
     def __init__(self):
         """Initialize the client with Azure credentials."""
         # Load environment variables
         load_dotenv()
         
-        # Azure OpenAI settings
-        self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        # Azure AI Service settings
+        self.ai_project_host = os.getenv("AZURE_AI_PROJECT_HOST")
+        self.subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+        self.resource_group = os.getenv("AZURE_RESOURCE_GROUP")
+        self.ai_hub_name = os.getenv("AZURE_AI_HUB_NAME")
+        self.ai_project_name = os.getenv("AZURE_AI_PROJECT_NAME")
+        self.connection_string = os.getenv("AZURE_AI_PROJECT_CONNECTION_STRING")
         
-        # Validate settings
-        if not all([self.azure_endpoint, self.azure_api_key, self.deployment_name]):
-            raise ValueError("Missing required Azure OpenAI configuration in environment")
-        
-        # Create kernel
-        self.kernel = self._create_kernel()
+        # Azure credential and client
+        self.credential = DefaultAzureCredential()
+        self.client = self._create_ai_client()
         
         # Load agent information
         self.agents = self._load_agent_info()
         self.current_agent = "orchestrator"  # Default agent
         
-        # Initialize chat history
-        self.chat_history = []
+        # Initialize conversation thread
+        self.thread_id = None
     
-    def _create_kernel(self):
-        """Create a kernel with Azure OpenAI service."""
-        kernel = sk.Kernel()
-        
-        # Add Azure OpenAI service
-        service = AzureChatCompletion(
-            service_id="chat",
-            deployment_name=self.deployment_name,
-            endpoint=self.azure_endpoint,
-            api_key=self.azure_api_key,
-            api_version="2024-02-15-preview"
-        )
-        
-        kernel.add_service(service)
-        return kernel
+    def _create_ai_client(self):
+        """Create an Azure AI Project client."""
+        try:
+            # First try using connection string if available
+            if self.connection_string:
+                logger.info("Using connection string to create AI Project client")
+                return AIProjectClient.from_connection_string(
+                    connection_string=self.connection_string,
+                    credential=self.credential
+                )
+            
+            # Otherwise construct connection string from components
+            if not (self.subscription_id and self.resource_group and 
+                    self.ai_hub_name and self.ai_project_name):
+                raise ValueError("Incomplete connection information. Provide either connection string or all required components.")
+            
+            # Determine host if not provided
+            host = self.ai_project_host
+            if not host:
+                # Use default format if not provided
+                region = "westus"  # Default region
+                host = f"{region}.ai.projects.azure.com"
+            
+            # Construct connection string manually
+            logger.info(f"Creating client for Hub '{self.ai_hub_name}', Project '{self.ai_project_name}'")
+            connection_string = (f"{host};{self.subscription_id};{self.resource_group};" 
+                               f"{self.ai_hub_name}/{self.ai_project_name}")
+            
+            return AIProjectClient.from_connection_string(
+                connection_string=connection_string,
+                credential=self.credential
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to create AI Project client: {str(e)}")
+            raise
     
     def _load_agent_info(self):
         """Load agent information from deployment file."""
@@ -123,40 +144,54 @@ class SkAgentClient:
             return f"Error: No {self.current_agent} agent found"
         
         try:
-            # Create chat history for context
-            messages = [
-                {"role": "system", "content": f"You are the {self.current_agent.capitalize()} agent."}
-            ]
-            messages.extend(self.chat_history)
-            messages.append({"role": "user", "content": message})
+            # Create or get thread if needed
+            if not self.thread_id:
+                thread = await self.client.agents.create_thread()
+                self.thread_id = thread.id
+                logger.info(f"Created new thread: {self.thread_id}")
             
-            # In a real implementation, this would use the specific agent ID
-            # For now, we'll use the SK kernel to generate a response
-            chat_service = self.kernel.get_service("chat")
-            if not chat_service:
-                return "Error: Chat service not found in kernel"
-            
-            # Create completion settings (simplified for demonstration)
-            from semantic_kernel.connectors.ai.open_ai import AzureChatPromptExecutionSettings
-            settings = AzureChatPromptExecutionSettings()
-            
-            # Get response
-            response_messages = await chat_service.complete_chat_async(
-                messages=messages,
-                settings=settings
+            # Add message to thread
+            await self.client.agents.create_message(
+                thread_id=self.thread_id,
+                role="user",
+                content=message
             )
             
-            if not response_messages:
+            # Run the agent on the thread
+            run = await self.client.agents.create_run(
+                thread_id=self.thread_id,
+                agent_id=agent_id
+            )
+            
+            # Wait for the run to complete
+            print("Agent processing...", end="\r")
+            while run.status not in ["completed", "failed", "cancelled"]:
+                run = await self.client.agents.get_run(
+                    thread_id=self.thread_id,
+                    run_id=run.id
+                )
+            
+            # Clear processing message
+            print("                   ", end="\r")
+            
+            # Check if run failed
+            if run.status == "failed":
+                return f"Error: Agent run failed - {run.failure_reason if hasattr(run, 'failure_reason') else 'Unknown error'}"
+            
+            # Get messages from thread
+            messages = await self.client.agents.list_messages(thread_id=self.thread_id)
+            
+            # Find the latest assistant message
+            assistant_messages = [msg for msg in messages if msg.role == "assistant"]
+            if not assistant_messages:
                 return "Error: No response from agent"
             
-            # Extract response text
-            response_text = response_messages[0].content if response_messages else "No response"
-            
-            # Update chat history
-            self.chat_history.append({"role": "user", "content": message})
-            self.chat_history.append({"role": "assistant", "content": response_text})
+            # Get the latest assistant message
+            latest_message = assistant_messages[-1]
+            response_text = latest_message.content[0].text if latest_message.content else "No response"
             
             return response_text
+            
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
             import traceback
@@ -182,27 +217,29 @@ class SkAgentClient:
         # Switch agent
         self.current_agent = agent_type
         
-        # Clear chat history when switching agents
-        self.chat_history = []
+        # Thread will be cleared on next message
+        self.thread_id = None
         
         return f"Switched to {agent_type.capitalize()} Agent"
     
-    def clear_history(self):
-        """Clear conversation history."""
-        self.chat_history = []
-        return f"Conversation history cleared for {self.current_agent.capitalize()} Agent"
+    async def clear_history(self):
+        """Clear conversation history by creating a new thread."""
+        self.thread_id = None
+        thread = await self.client.agents.create_thread()
+        self.thread_id = thread.id
+        return f"Conversation thread cleared for {self.current_agent.capitalize()} Agent"
 
 async def interactive_chat():
     """Run an interactive chat session with deployed agents."""
     try:
         client = SkAgentClient()
         
-        print("\n=== SK Agent Interactive Chat ===")
+        print("\n=== SK Agent Interactive Chat (Azure AI Service) ===")
         print(f"Currently using: {client.current_agent.capitalize()} Agent")
         print("Commands:")
         print("  'exit' - Exit the chat")
         print("  'switch chat/weather/calculator/orchestrator' - Switch to a different agent")
-        print("  'clear' - Clear conversation history")
+        print("  'clear' - Clear conversation thread")
         
         while True:
             try:
@@ -216,7 +253,7 @@ async def interactive_chat():
                 print("Exiting chat...")
                 break
             elif user_input.lower() == "clear":
-                result = client.clear_history()
+                result = await client.clear_history()
                 print(f"System: {result}")
                 continue
             elif user_input.lower().startswith("switch "):
@@ -228,7 +265,6 @@ async def interactive_chat():
                 continue
             
             # Process regular message
-            print("Agent thinking...", end="\r")
             response = await client.send_message(user_input)
             print(f"{client.current_agent.capitalize()} Agent: {response}")
             
