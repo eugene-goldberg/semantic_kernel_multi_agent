@@ -57,13 +57,14 @@ class SkAgentClient:
         
         # Add Azure OpenAI service
         service = AzureChatCompletion(
+            service_id="chat",
             deployment_name=self.deployment_name,
             endpoint=self.azure_endpoint,
             api_key=self.azure_api_key,
             api_version="2024-02-15-preview"
         )
         
-        kernel.add_service(service, service_id="chat")
+        kernel.add_service(service)
         return kernel
     
     def _load_agent_info(self):

@@ -18,6 +18,7 @@ project_root = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, project_root)
 
 from src.agents.plugins.weather_plugin import WeatherPlugin
+from src.agents.plugins.calculator_plugin import CalculatorPlugin
 from src.services.weather_service import WeatherService
 
 def setup_kernel_with_openai():
@@ -42,7 +43,8 @@ def setup_kernel_with_openai():
             service_id="chat", 
             deployment_name=deployment,
             endpoint=endpoint,
-            api_key=api_key
+            api_key=api_key,
+            api_version="2024-02-15-preview"
         )
     )
     
@@ -52,40 +54,48 @@ async def setup_chat_agent(kernel):
     """Set up the chat agent with function calling capabilities"""
     # Create a planner that can use function calling
     planner = FunctionCallingStepwisePlanner(
-        kernel=kernel,
-        service_id="chat",
-        excluded_plugins=[],
-        excluded_functions=[]
+        service_id="chat"
     )
+    
+    # Set the kernel for the planner
+    planner._kernel = kernel
     
     # Create the system message
     system_message = """
     You are a helpful assistant that provides friendly, concise, and accurate information.
+    
     When the user asks about weather, you should call the GetWeather function to get accurate weather information.
     Always extract the location from the user's question when dealing with weather queries.
-    
     For example:
     - If they ask 'What's the weather like in Seattle?', call GetWeather with location='Seattle, WA'
     - If they ask 'Will it rain tomorrow in Chicago?', call GetWeather with location='Chicago, IL' and type='forecast'
-    
     DO NOT make up weather information. ALWAYS use the GetWeather function for weather queries.
+    
+    When the user asks about calculations or mathematical operations, use the appropriate function from the CalculatorPlugin:
+    - For basic calculations, use the Calculate function
+    - For matrix operations, use the MatrixOperation function
+    - For statistical analysis, use the Statistics function
+    - For equation solving, use the SolveEquation function
+    - For calculus operations, use the Calculus function
+    - For algebraic operations, use the Algebra function
+    
     For other questions, answer directly from your knowledge.
     """
     
     return planner, system_message
 
-async def setup_weather_plugin(kernel):
-    """Set up the weather plugin"""
-    # Create a weather service instance
+async def setup_plugins(kernel):
+    """Set up all plugins"""
+    # Create and set up weather plugin
     weather_service = WeatherService()
-    
-    # Create the weather plugin
     weather_plugin = WeatherPlugin(weather_service)
+    kernel.add_plugin(weather_plugin, plugin_name="WeatherPlugin")
     
-    # Import the plugin to the kernel
-    kernel.import_plugin_from_object(weather_plugin, plugin_name="WeatherPlugin")
+    # Create and set up calculator plugin
+    calculator_plugin = CalculatorPlugin()
+    kernel.add_plugin(calculator_plugin, plugin_name="CalculatorPlugin")
     
-    return weather_plugin
+    return weather_plugin, calculator_plugin
 
 async def orchestration_chat():
     """Run the orchestration chat"""
@@ -94,14 +104,18 @@ async def orchestration_chat():
     # Set up the kernel
     kernel = setup_kernel_with_openai()
     
-    # Set up the weather plugin
-    await setup_weather_plugin(kernel)
+    # Set up plugins
+    await setup_plugins(kernel)
     
     # Set up the chat agent with function calling
     planner, system_message = await setup_chat_agent(kernel)
     
-    print("\nWelcome to the Multi-Agent Chat!")
-    print("You can ask general questions or about the weather.")
+    print("\nWelcome to the SK Multi-Agent Chat!")
+    print("You can ask general questions, weather information, or mathematical calculations.")
+    print("Examples:")
+    print("  - 'What's the weather like in Seattle?'")
+    print("  - 'Calculate the square root of 64'")
+    print("  - 'Who wrote Pride and Prejudice?'")
     print("Type 'exit' to quit.")
     
     # Chat loop
@@ -123,32 +137,49 @@ async def orchestration_chat():
         
         # Execute the planner to potentially call functions
         try:
+            print("Thinking...", end="\r")
             # Execute with function calling planner
             result = await planner.invoke(
-                goal=user_input,
-                system_message=system_message,
-                chat_history=chat_history
+                kernel=kernel,
+                question=user_input
             )
             
             # Add assistant message to chat history
             chat_history.append({"role": "assistant", "content": str(result)})
             
-            # Print the response
+            # Print the response (clear the "Thinking..." first)
+            print("          ", end="\r")
             print(f"Agent: {result}")
+            
+            # Optionally clear history if it gets too long to save tokens
+            if len(chat_history) > 10:
+                # Keep the first (system) message and last 4 exchanges
+                chat_history = [chat_history[0]] + chat_history[-8:]
             
         except Exception as e:
             print(f"Error: {str(e)}")
             print("Let me try again with a simpler approach...")
             
             # Fallback to regular completion
-            response = await kernel.invoke_prompt(
-                prompt=f"System: {system_message}\n\nUser: {user_input}",
-                service_id="chat"
+            print("Thinking (fallback)...", end="\r")
+            chat_service = kernel.get_service("chat")
+            response = await chat_service.complete_chat_async(
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_input}
+                ]
             )
-            print(f"Agent: {response}")
+            response_text = response[0].content if response else "Sorry, I couldn't generate a response."
+            print("                      ", end="\r")
+            print(f"Agent: {response_text}")
             
             # Add to chat history
-            chat_history.append({"role": "assistant", "content": str(response)})
+            chat_history.append({"role": "assistant", "content": response_text})
+            
+            # Optionally clear history if it gets too long to save tokens
+            if len(chat_history) > 10:
+                # Keep the first (system) message and last 4 exchanges
+                chat_history = [chat_history[0]] + chat_history[-8:]
 
 async def main():
     """Main entry point"""

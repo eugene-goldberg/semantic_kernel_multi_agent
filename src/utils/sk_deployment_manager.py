@@ -82,6 +82,7 @@ class SkDeploymentManager:
         try:
             # Create service and kernel
             service = AzureChatCompletion(
+                service_id="chat",
                 deployment_name=settings.deployment_name,
                 endpoint=settings.azure_endpoint,
                 api_key=settings.azure_api_key,

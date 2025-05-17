@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This project is a multi-agent application built using Microsoft Semantic Kernel SDK and Azure AI Foundry SDK, with deployment to Azure AI Agent Service. It implements a chat completion agent and a weather checking agent that can be deployed and tested through various interfaces.
+This project is a multi-agent application built using Microsoft Semantic Kernel SDK with deployment to Azure AI Service. It implements a standardized approach for creating, testing, and deploying various specialist agents (Chat, Weather, Calculator) using the Semantic Kernel framework exclusively.
 
 ## Key Commands
 
@@ -25,14 +25,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ### Local Development
 
 ```bash
-# Run the local chat client (for testing without deployment)
-python src/scripts/local_chat.py
+# Run the SK orchestration test suite
+python src/scripts/test_sk_orchestration.py
 
-# Run tests
-python src/scripts/run_tests.py
-
-# Run the simple local chat example
-python src/scripts/simple_local_chat.py
+# Run the SK orchestration example
+python src/scripts/orchestrate_with_sk.py
 
 # Test weather service directly
 python src/scripts/test_weather_service.py
@@ -57,47 +54,27 @@ bash src/scripts/create_service_principal.sh
 ### Deployment
 
 ```bash
-# Deploy agents to Azure AI Agent Service using DefaultAzureCredential
-python src/scripts/deploy_agents.py
+# Deploy all SK-based agents to Azure AI Service
+python src/scripts/deploy_sk_agents.py
 
-# Deploy agents using Azure CLI (recommended)
-bash src/scripts/deploy_agents_az_cli.sh
+# Deploy specific agent (chat, weather, calculator, or orchestrator)
+python src/scripts/deploy_sk_agents.py [agent_type]
 
-# Deploy agents using SDK with interactive login
-bash src/scripts/deploy_agents_cli.sh
-
-# Deploy and immediately start chatting (all-in-one)
-bash src/scripts/deploy_and_chat.sh
-
-# Using Service Principal auth with REST API
-python src/scripts/deploy_with_service_principal.py
-
-# Simple deployment script
-python src/scripts/simple_deploy.py
+# Display agent configuration information
+python src/scripts/deploy_sk_agents.py info
 ```
 
-### Remote Testing and Interaction
+### Testing and Interaction
 
 ```bash
-# Start API server
-python src/scripts/run_api_server.py
+# Test local SK-based agent orchestration
+python src/scripts/test_sk_orchestration.py
 
-# Chat with deployed agents
-python src/scripts/remote_chat.py
-python src/scripts/interact_deployed_agents.py
+# Chat with deployed SK agents
+python src/scripts/interact_sk_agents.py
 
-# Use the API client
-python src/scripts/api_client.py info
-python src/scripts/api_client.py message --agent chat --message "Hello"
-
-# Use HTTP client
-python src/scripts/http_client.py chat --agent chat
-
-# Test connectivity to deployed agents
-python src/scripts/test_connectivity.py
-
-# Agent orchestration (recommended)
-python src/scripts/orchestrate_with_kernel.py
+# SK-based orchestration (local)
+python src/scripts/orchestrate_with_sk.py
 ```
 
 ## Project Structure
@@ -106,11 +83,13 @@ The codebase is organized into several key modules:
 
 ### Agents Module
 
-Located in `src/agents/`, this module defines agent types:
-- `chat_agent.py`: Implements general conversation agent
-- `weather_agent.py`: Implements weather specialist agent 
-- `orchestrator_agent.py`: Routes requests to appropriate agents
+Located in `src/agents/`, this module defines SK-based agent types:
+- `chat_agent.py`: Implements general conversation agent using SK
+- `weather_agent.py`: Implements weather specialist agent using SK
+- `calculator_agent_sk.py`: Implements calculator specialist agent using SK
+- `orchestrator_agent_updated.py`: Routes requests to appropriate agents using SK
 - `plugins/weather_plugin.py`: SK plugin for weather functionality
+- `plugins/calculator_plugin.py`: SK plugin for calculator functionality
 
 ### Services Module
 
@@ -119,9 +98,9 @@ Located in `src/services/`, this module handles external service integration:
 
 ### Utils Module
 
-Located in `src/utils/`, this module provides factory classes:
-- `local_agent_factory.py`: Creates agents for local operation
-- `azure_agent_factory.py`: Creates and deploys agents to Azure
+Located in `src/utils/`, this module provides SK-based utilities:
+- `sk_agent_factory.py`: Creates standardized SK agents
+- `sk_deployment_manager.py`: Manages deployment of SK agents to Azure
 
 ### API Module
 
@@ -132,6 +111,7 @@ Located in `src/api/`, this module implements HTTP interface:
 
 Located in `src/config/`, this module handles configuration:
 - `settings.py`: Environment variables and configuration helpers
+- `agent_configs.py`: Centralized agent configuration for SK-based agents
 
 ## Architecture Pattern
 
@@ -145,19 +125,34 @@ The application follows a modular agent architecture pattern:
 
 Key integration points to be aware of:
 1. Weather API integration via `WeatherService` and `WeatherPlugin`
-2. Azure AI Agent Service integration via `AzureAgentFactory`
-3. Semantic Kernel integration via agent classes and plugins
+2. Calculator functionality via `CalculatorPlugin`
+3. Azure AI Service integration via `SkDeploymentManager`
+4. Semantic Kernel integration via all agent classes and plugins
 
 ## Agent Orchestration
 
 The project includes a multi-agent orchestration system built with Semantic Kernel 1.30.0:
 
-1. The main chat agent can delegate specialized tasks to other agents
-2. For weather queries, tasks are automatically routed to the weather agent
-3. The implementation uses function calling via the Semantic Kernel plugin system
-4. The system is designed to be extensible with additional specialized agents
+1. The orchestrator agent routes requests to appropriate specialized agents
+2. Weather queries are routed to the weather agent
+3. Mathematical calculations are routed to the calculator agent
+4. General queries are routed to the chat agent
+5. All implementation uses function calling via the Semantic Kernel plugin system
+6. The system is designed to be extensible with additional specialized agents
 
-The orchestration files are:
-- `src/scripts/orchestrate_with_kernel.py`: Main implementation file
-- `ORCHESTRATION_GUIDE.md`: User documentation
-- `ORCHESTRATION_IMPLEMENTATION.md`: Technical implementation details
+The SK orchestration files are:
+- `src/scripts/orchestrate_with_sk.py`: SK-based orchestration implementation
+- `src/scripts/test_sk_orchestration.py`: Testing orchestration functionality
+- `SK_IMPLEMENTATION_README.md`: Detailed implementation documentation
+
+## IMPORTANT NOTE
+
+**All future development must focus exclusively on the Semantic Kernel (SK) based implementation.** 
+
+Files with the following patterns are part of the SK-based implementation:
+- `*_sk_*.py` - SK-specific scripts and tests
+- `sk_*.py` - SK utility files
+- `*_sk.py` - SK-based agent implementations
+- `orchestrator_agent_updated.py` - Updated orchestrator using SK
+
+Do not modify or use any non-SK implementations (such as direct Azure OpenAI API calls) as they are being phased out in favor of the standardized SK approach. This ensures all agents are consistently defined using the Semantic Kernel SDK and properly deploy to Azure AI Service.

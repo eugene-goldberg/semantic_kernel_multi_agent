@@ -36,7 +36,8 @@ class OrchestratorAgent:
         weather_agent = WeatherAgent(service).get_agent()
         calculator_agent = CalculatorAgent(service).get_agent()
         
-        # Create the orchestrator agent
+        # Create the orchestrator agent with the plugins
+        plugins = [chat_agent, weather_agent, calculator_agent]
         self.agent = ChatCompletionAgent(
             service=service,
             kernel=kernel,
@@ -60,7 +61,7 @@ class OrchestratorAgent:
                 "requests to the appropriate specialist. Always clarify which agent you're routing to "
                 "and why it's the most appropriate choice."
             ),
-            plugins=[chat_agent, weather_agent, calculator_agent],
+            plugins=plugins,
         )
     
     def get_agent(self):

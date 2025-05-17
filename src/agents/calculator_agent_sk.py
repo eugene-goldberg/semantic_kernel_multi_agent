@@ -33,7 +33,7 @@ class CalculatorAgent:
         
         # Import the calculator plugin
         calculator_plugin = CalculatorPlugin()
-        kernel.import_plugin(calculator_plugin, plugin_name="CalculatorPlugin")
+        kernel.add_plugin(calculator_plugin, plugin_name="CalculatorPlugin")
         
         # Create the agent
         self.agent = ChatCompletionAgent(

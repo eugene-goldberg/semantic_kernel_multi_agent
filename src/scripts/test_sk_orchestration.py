@@ -49,13 +49,15 @@ async def setup_kernel():
     
     # Add Azure OpenAI service
     service = AzureChatCompletion(
+        service_id="chat",
         deployment_name=deployment,
         endpoint=endpoint,
         api_key=api_key,
         api_version="2024-02-15-preview"
     )
     
-    kernel.add_service(service, service_id="chat")
+    # For SK 1.30.0, just pass the service object
+    kernel.add_service(service)
     
     return kernel, service
 
@@ -63,23 +65,14 @@ async def setup_plugins(kernel):
     """Set up plugins for the kernel."""
     # Create and register weather plugin
     weather_plugin_obj = WeatherPlugin()
-    weather_plugin = KernelPlugin.from_object(
-        "WeatherPlugin",
-        weather_plugin_obj,
-        description="Provides weather information for US cities"
-    )
-    kernel.plugins["WeatherPlugin"] = weather_plugin
+    kernel.add_plugin(weather_plugin_obj, plugin_name="WeatherPlugin")
     
     # Create and register calculator plugin
     calculator_plugin_obj = CalculatorPlugin()
-    calculator_plugin = KernelPlugin.from_object(
-        "CalculatorPlugin",
-        calculator_plugin_obj,
-        description="Provides advanced mathematical calculation capabilities"
-    )
-    kernel.plugins["CalculatorPlugin"] = calculator_plugin
+    kernel.add_plugin(calculator_plugin_obj, plugin_name="CalculatorPlugin")
     
-    return weather_plugin, calculator_plugin
+    # Return the plugin objects (not needed for API, but kept for compatibility)
+    return weather_plugin_obj, calculator_plugin_obj
 
 async def test_weather_agent():
     """Test the weather agent directly."""
@@ -102,9 +95,8 @@ async def test_weather_agent():
         logger.info(f"\nQuery: {query}")
         
         try:
-            chat_history = [{"role": "user", "content": query}]
-            response = await agent.invoke(chat_history)
-            
+            # Use get_response with string message
+            response = await agent.get_response(messages=query)
             logger.info(f"Weather Agent Response: {response}")
         except Exception as e:
             logger.error(f"Error testing weather agent: {str(e)}")
@@ -130,9 +122,8 @@ async def test_calculator_agent():
         logger.info(f"\nQuery: {query}")
         
         try:
-            chat_history = [{"role": "user", "content": query}]
-            response = await agent.invoke(chat_history)
-            
+            # Use get_response with string message
+            response = await agent.get_response(messages=query)
             logger.info(f"Calculator Agent Response: {response}")
         except Exception as e:
             logger.error(f"Error testing calculator agent: {str(e)}")
@@ -168,13 +159,16 @@ async def test_orchestrator():
         logger.info(f"Expected Agent: {expected_agent}")
         
         try:
-            chat_history = [{"role": "user", "content": query}]
-            response = await agent.invoke(chat_history)
-            
+            # Use get_response with string message
+            response = await agent.get_response(messages=query)
             logger.info(f"Orchestrator Response: {response}")
             
+            # Convert response to string if it's not already
+            response_text = str(response)
+            logger.info(f"Response type: {type(response)}")
+            
             # Check if the response mentions the expected agent
-            if expected_agent.lower() in response.lower():
+            if expected_agent.lower() in response_text.lower():
                 logger.info(f"✓ Correct routing to {expected_agent} Agent")
             else:
                 logger.warning(f"✗ Expected routing to {expected_agent} Agent, but not found in response")

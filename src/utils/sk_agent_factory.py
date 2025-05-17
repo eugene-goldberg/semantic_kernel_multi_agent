@@ -39,6 +39,7 @@ class SkAgentFactory:
             raise ValueError("Azure OpenAI configuration not found in environment")
         
         return AzureChatCompletion(
+            service_id="chat",
             deployment_name=deployment,
             endpoint=endpoint,
             api_key=api_key,
@@ -58,7 +59,7 @@ class SkAgentFactory:
         
         # Add service to kernel
         service = SkAgentFactory.create_service()
-        kernel.add_service(service, service_id="chat")
+        kernel.add_service(service)
         
         return kernel
     

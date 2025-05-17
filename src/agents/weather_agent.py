@@ -25,7 +25,8 @@ class WeatherAgent:
         
         # Import the weather plugin
         weather_plugin = WeatherPlugin()
-        kernel.import_plugin(weather_plugin, plugin_name="WeatherPlugin")
+        # Use add_plugin instead of import_plugin for SK 1.30.0
+        kernel.add_plugin(weather_plugin, plugin_name="WeatherPlugin")
         
         self.agent = ChatCompletionAgent(
             service=service,
