@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The Semantic Kernel (SK) multi-agent system implementation is now complete with API compatibility issues resolved, but there are challenges with actual deployment to Azure AI Service.
+The Semantic Kernel (SK) multi-agent system implementation is now complete with two deployment paths: local operation and Azure AI Foundry deployment.
 
 ### Local Implementation (COMPLETE)
 
@@ -13,14 +13,24 @@ All agents have been implemented and tested locally:
 - Calculator Agent: Fully implemented and tested
 - Orchestrator Agent: Fully implemented with proper routing to all specialized agents
 
-### Azure AI Service Setup (DONE WITH ISSUES)
+### Azure AI Service Initial Approach (DEPRECATED)
 
-The Azure AI Service setup process faced several challenges:
+The initial Azure AI Service approach faced several challenges:
 
-- Created documentation for manual setup using Azure AI Studio (recommended)
+- Created documentation for manual setup using Azure AI Studio
 - The CLI-based setup script encountered issues with the Azure CLI resource types
-- Manual creation of resources through Azure AI Studio was implemented
-- Domain resolution issues with Azure AI Service endpoints (westus.ai.projects.azure.com vs. westus.projectsai.azure.com)
+- Domain resolution issues with Azure AI Service endpoints
+- Compatibility issues with the AIProjectClient SDK
+
+### Azure AI Foundry Integration (NEW APPROACH)
+
+Based on the existing deployed agents in Azure AI Foundry, we've created a new implementation:
+
+- Created `ai_foundry_deployment_manager.py` using direct REST API calls
+- Added support for Azure AI Foundry workspace configuration
+- Implemented complete deployment script for Azure AI Foundry
+- Added interactive client for Azure AI Foundry agents
+- Applied authentication using Azure CLI tokens
 
 ### Local Testing (COMPLETE)
 
@@ -30,39 +40,70 @@ Local testing has been implemented and verified:
 - Created `test_local_orchestration.py` for orchestration verification
 - All agents function correctly in the local environment
 
-### Azure Deployment (FACING CHALLENGES)
+### Azure AI Foundry Deployment (READY)
 
-The Azure deployment is facing some technical challenges:
+The Azure AI Foundry deployment is now ready:
 
-- Updated deployment scripts to use the latest Azure AI Service API
-- Fixed compatibility issues with the AIProjectClient
-- Encountered domain resolution issues with Azure AI Service endpoints
-- Deployed locally for testing but further work needed for cloud deployment
+- Added `deploy_ai_foundry_agents.py` for deploying all agents to Azure AI Foundry
+- Created `interact_ai_foundry_agents.py` for interacting with deployed agents
+- Added full documentation for Azure AI Foundry deployment
+- Ready for deployment to existing Azure AI Foundry workspace
 
 ## Next Steps
 
-1. **Resolve Azure AI Service Connectivity Issues**:
-   - Verify Azure AI Service endpoint configurations
-   - Validate connectivity to Azure AI Service from within the development environment
-   - Consider using an Azure VM to eliminate potential connectivity/DNS issues
+1. **Deploy to Azure AI Foundry**:
+   - Run `python src/scripts/deploy_ai_foundry_agents.py` to deploy all agents
+   - Verify deployment success in Azure AI Foundry console
+   - Test interaction with `python src/scripts/interact_ai_foundry_agents.py`
+   - Verify orchestration works properly with the deployed agents
 
-2. **Alternative Deployment Options**:
-   - Focus on local testing with `deploy_local_sk_agents.py` and `test_local_orchestration.py`
-   - Consider alternative deployment targets if Azure AI Service connectivity issues persist
-   - Explore using Semantic Kernel's OpenAI or Azure OpenAI connectors instead
+2. **Enhance Agent Capabilities**:
+   - Implement full tool handling in the AI Foundry interaction client
+   - Add support for more specialized agents (e.g., image analysis, code generation)
+   - Improve error handling and retry logic for better reliability
 
-3. **Complete Local Testing and Documentation**:
-   - Run comprehensive local testing of all agents and orchestration
-   - Document remaining issues with Azure AI Service deployment
-   - Provide workarounds and alternative implementation approaches
+3. **Documentation and Testing**:
+   - Add comprehensive unit tests for deployment scripts
+   - Create examples demonstrating complex multi-agent scenarios
+   - Update CLAUDE.md with new deployment instructions
+   - Create a quickstart guide for new users
 
 ## Troubleshooting
 
-If you encounter issues with the Azure CLI resource creation:
+### Azure AI Foundry Deployment Issues
 
-1. The `aigalleries` resource type may not be available in all regions or may require specific Azure CLI extensions
-2. As an alternative, use Azure AI Studio via the Azure Portal to create resources manually
-3. Follow the documentation in `docs/azure_ai_studio_setup.md` for step-by-step instructions
+1. **Authentication Problems**:
+   - Run `az login` to ensure you're authenticated with Azure
+   - Verify your account has access to the specified subscription and resource group
+   - Check that your account has the Azure AI Developer RBAC role
+
+2. **API Connectivity Issues**:
+   - Verify network connectivity to the Azure AI Foundry API endpoint
+   - Make sure you're using the correct API version
+   - Check the region configuration matches your workspace
+
+3. **Deployment Failures**:
+   - Verify the workspace exists and is accessible
+   - Confirm that the specified model is available in your region
+   - Check logs for specific error messages
+
+### Local Testing Alternative
+
+If you encounter issues with Azure AI Foundry deployment:
+
+1. Use the local testing scripts as an alternative:
+   ```bash
+   python src/scripts/deploy_local_sk_agents.py
+   python test_local_orchestration.py
+   ```
+
+2. This allows you to test the functionality of your agents without requiring cloud deployment.
+
+### Documentation Reference
+
+For more detailed deployment instructions:
+- `docs/azure_ai_foundry_deployment.md` - New Azure AI Foundry deployment guide
+- `docs/azure_ai_studio_setup.md` - Original Azure AI Studio setup guide (deprecated)
 
 ## Local Testing Instructions
 
