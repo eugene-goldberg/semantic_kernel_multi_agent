@@ -1,0 +1,9 @@
+{
+  "workspace": "sk-multi-agent-project",
+  "resource_group": "semantic-kernel-multi-agent-rg",
+  "deployment_status": "success",
+  "chat_agent_id": "asst_fam4D4fy6zYV39iJs5LKzvLK",
+  "weather_agent_id": "asst_03wfecATSfCDtZnmaWutuYeZ",
+  "calculator_agent_id": "asst_U9mjIyUQSh69J1Z3tOQBwO1o",
+  "orchestrator_agent_id": "asst_n6aWpcCsv1uYxxP5eE3r1lk9"
+}
