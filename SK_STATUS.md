@@ -71,23 +71,28 @@ All testing has been completed with successful results:
 
 ## Deployment Status
 
-The SK-based agents have been implemented and tested locally. The deployment infrastructure is ready but actual deployment to Azure AI Service has not yet been executed.
+The SK-based agents have been implemented and tested locally. The deployment infrastructure has been updated to use Azure AI Service (not Azure OpenAI).
 
 | Deployment Component | Status | Notes |
 |----------------------|--------|-------|
 | Deployment Script | ✅ Ready | `src/scripts/deploy_sk_agents.py` is ready for execution |
-| Deployment Manager | ✅ Ready | `src/utils/sk_deployment_manager.py` is fully implemented |
+| Deployment Manager | ✅ Updated | `src/utils/sk_deployment_manager.py` updated to use Azure AI Service |
 | Agent Configurations | ✅ Ready | All agent configurations are properly set in `src/config/agent_configs.py` |
-| Azure Environment Setup | ⚠️ Pending | Azure credentials and resources need to be configured |
+| Azure Environment Setup | ✅ Ready | `src/scripts/setup_azure_ai_service.sh` script created to set up Azure AI Service resources |
+| Client Interaction | ✅ Updated | `src/scripts/interact_sk_agents.py` updated to work with Azure AI Service |
 | Actual Deployment | ⚠️ Pending | Deployment to Azure AI Service has not been executed yet |
 
 ## Next Steps
 
-1. **Azure Deployment** (NEXT PRIORITY):
-   - Configure Azure environment credentials in .env file
-   - Run `python src/scripts/deploy_sk_agents.py` to deploy all SK-based agents
-   - Verify deployment was successful
-   - Test interaction with deployed agents using `interact_sk_agents.py`
+1. **Azure AI Service Setup** (NEXT PRIORITY):
+   - Run `./src/scripts/setup_azure_ai_service.sh` to set up Azure AI Service resources
+   - Verify Azure AI Hub and Project are created successfully
+   - Check that environment variables are properly configured
+
+2. **Azure Deployment**:
+   - Run `python src/scripts/deploy_sk_agents.py` to deploy all SK-based agents to Azure AI Service
+   - Verify deployment was successful by checking `sk_deployment_info.json`
+   - Test interaction with deployed agents using `python src/scripts/interact_sk_agents.py`
 
 2. **Deployment Verification**:
    - Test delegation works correctly with deployed agents
@@ -101,36 +106,56 @@ The SK-based agents have been implemented and tested locally. The deployment inf
 
 ## Implementation Details
 
-### SK API Usage
+### Azure AI Service Integration
 
-The implementation uses Semantic Kernel SDK version 1.30.0 with the following key components:
+The implementation has been updated to use Azure AI Service (not Azure OpenAI) with the following key components:
 
-1. **ChatCompletionAgent**:
-   - Used for creating all agents with appropriate instructions
-   - Follows SK 1.30.0 API patterns and best practices
-
-2. **Kernel and Service Configuration**:
+1. **Azure AI Project Client**:
    ```python
-   kernel = sk.Kernel()
-   service = AzureChatCompletion(
-       service_id="chat",
-       deployment_name=deployment_name,
-       endpoint=endpoint,
-       api_key=api_key,
-       api_version="2024-02-15-preview"
+   from azure.identity import DefaultAzureCredential
+   from azure.ai.projects import AIProjectClient
+   
+   # Create client using connection string
+   credential = DefaultAzureCredential()
+   client = AIProjectClient.from_connection_string(
+       connection_string=connection_string,
+       credential=credential
    )
-   kernel.add_service(service)
    ```
 
-3. **Plugin Registration**:
+2. **Agent Deployment**:
    ```python
-   plugin_obj = WeatherPlugin(weather_service)
-   kernel.add_plugin(plugin_obj, plugin_name="WeatherPlugin")
+   # Deploy agent to Azure AI Service
+   agent_definition = await client.agents.create_agent(
+       model=model,
+       name=name,
+       instructions=instructions,
+       tools=tools if tools else None
+   )
+   ```
+
+3. **Interaction with Agents**:
+   ```python
+   # Create thread
+   thread = await client.agents.create_thread()
+   
+   # Add message to thread
+   await client.agents.create_message(
+       thread_id=thread_id,
+       role="user",
+       content=message
+   )
+   
+   # Run agent on thread
+   run = await client.agents.create_run(
+       thread_id=thread_id,
+       agent_id=agent_id
+   )
    ```
 
 4. **Function Calling**:
-   - Implemented via kernel_function decorators in plugin classes
-   - Called through the Kernel.invoke pattern or agent.get_response method
+   - Implemented via tool definitions in agent deployment
+   - Tools configured for Weather and Calculator functionality
 
 ### Orchestration Pattern
 
@@ -159,16 +184,21 @@ This approach offers:
 The current SK implementation has been committed to the repository:
 
 - Branch: main
-- Last commit: "Implement comprehensive Semantic Kernel-based agent system with orchestration"
-- All SK-related files are tracked and up-to-date
+- Last commit: "Implement Azure AI Service deployment for SK agents"
+- Key changes:
+  - Updated deployment manager to use Azure AI Service
+  - Created setup script for Azure AI environment
+  - Updated interaction client
+  - Added documentation for Azure AI Service deployment
 
 ## Troubleshooting
 
 If issues arise during deployment:
 
 1. **Authentication Issues**:
-   - Verify Azure credentials in .env file
-   - Check that the service principal has appropriate permissions
+   - Run `az login` to ensure you're authenticated with Azure
+   - Verify DefaultAzureCredential can access your subscription
+   - Check that you have appropriate permissions for Azure AI Service
 
 2. **Deployment Failures**:
    - Check Azure resource quotas and limits
@@ -182,6 +212,21 @@ If issues arise during deployment:
 
 ## Conclusion
 
-The Semantic Kernel-based multi-agent system is fully implemented and tested locally. All components are working correctly with proper orchestration and delegation. The system is ready for deployment to Azure AI Service, which is the next priority task.
+The Semantic Kernel-based multi-agent system is fully implemented and tested locally. All components are working correctly with proper orchestration and delegation. The deployment infrastructure has been completely updated to use Azure AI Service instead of Azure OpenAI, with dedicated setup scripts and interaction clients.
 
-The implementation follows best practices for Semantic Kernel SDK usage, ensuring a standardized approach across all agent types and enabling seamless deployment to Azure AI Service.
+The implementation is now ready for actual deployment to Azure AI Service, with the first step being to run the setup script to create the necessary Azure resources.
+
+## Recent Updates
+
+1. **Azure AI Service Integration**:
+   - Completely refactored deployment manager to use Azure AI Service
+   - Created setup script for Azure AI Hub and Project
+   - Updated interaction client to use Azure AI Service API
+
+2. **Documentation**:
+   - Added detailed deployment guide for Azure AI Service
+   - Created sample environment configuration file
+
+3. **Testing**:
+   - Confirmed local functionality of all agents
+   - Verified deployment infrastructure code
