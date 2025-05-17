@@ -54,35 +54,30 @@ class SkAgentClient:
     def _create_ai_client(self):
         """Create an Azure AI Project client."""
         try:
-            # First try using connection string if available
-            if self.connection_string:
-                logger.info("Using connection string to create AI Project client")
-                return AIProjectClient.from_connection_string(
-                    connection_string=self.connection_string,
-                    credential=self.credential
-                )
-            
-            # Otherwise construct connection string from components
-            if not (self.subscription_id and self.resource_group and 
-                    self.ai_hub_name and self.ai_project_name):
-                raise ValueError("Incomplete connection information. Provide either connection string or all required components.")
-            
-            # Determine host if not provided
-            host = self.ai_project_host
-            if not host:
+            # Determine endpoint if not provided
+            endpoint = self.ai_project_host
+            if not endpoint:
                 # Use default format if not provided
                 region = "westus"  # Default region
-                host = f"{region}.ai.projects.azure.com"
-            
-            # Construct connection string manually
+                endpoint = f"https://{region}.projectsai.azure.com"
+            elif not endpoint.startswith("https://"):
+                endpoint = f"https://{endpoint}"
+                
             logger.info(f"Creating client for Hub '{self.ai_hub_name}', Project '{self.ai_project_name}'")
-            connection_string = (f"{host};{self.subscription_id};{self.resource_group};" 
-                               f"{self.ai_hub_name}/{self.ai_project_name}")
+            logger.info(f"Using endpoint: {endpoint}")
             
-            return AIProjectClient.from_connection_string(
-                connection_string=connection_string,
+            # Create client
+            client = AIProjectClient(
+                endpoint=endpoint,
                 credential=self.credential
             )
+            
+            # Set project context if provided
+            if self.subscription_id and self.resource_group and self.ai_hub_name and self.ai_project_name:
+                logger.info(f"Setting project context: {self.subscription_id}/{self.resource_group}/{self.ai_hub_name}/{self.ai_project_name}")
+                client._scope = f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group}/providers/Microsoft.MachineLearningServices/aigalleries/{self.ai_hub_name}/aiprojects/{self.ai_project_name}"
+            
+            return client
             
         except Exception as e:
             logger.error(f"Failed to create AI Project client: {str(e)}")

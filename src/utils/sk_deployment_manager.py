@@ -78,36 +78,30 @@ class SkDeploymentManager:
         credential = DefaultAzureCredential()
         
         try:
-            # First try using connection string if available
-            if settings.ai_project_connection_string:
-                logger.info("Using connection string to create AI Project client")
-                return AIProjectClient.from_connection_string(
-                    connection_string=settings.ai_project_connection_string,
-                    credential=credential
-                )
-            
-            # Otherwise construct connection string from components
-            logger.info(f"Creating client for Hub '{settings.ai_hub_name}', Project '{settings.ai_project_name}'")
-            
-            if not (settings.subscription_id and settings.resource_group and 
-                    settings.ai_hub_name and settings.ai_project_name):
-                raise ValueError("Incomplete connection information. Provide either connection string or all required components.")
-            
-            # Determine host if not provided
-            host = settings.ai_project_host
-            if not host:
+            # Determine endpoint if not provided
+            endpoint = settings.ai_project_host
+            if not endpoint:
                 # Use default format if not provided
                 region = "westus"  # Default region
-                host = f"{region}.ai.projects.azure.com"
+                endpoint = f"https://{region}.ai.projects.azure.com"
+            elif not endpoint.startswith("https://"):
+                endpoint = f"https://{endpoint}"
+                
+            logger.info(f"Creating client for Hub '{settings.ai_hub_name}', Project '{settings.ai_project_name}'")
+            logger.info(f"Using endpoint: {endpoint}")
             
-            # Construct connection string manually
-            connection_string = (f"{host};{settings.subscription_id};{settings.resource_group};" 
-                                f"{settings.ai_hub_name}/{settings.ai_project_name}")
-            
-            return AIProjectClient.from_connection_string(
-                connection_string=connection_string,
+            # Create client
+            client = AIProjectClient(
+                endpoint=endpoint,
                 credential=credential
             )
+            
+            # Set project context if provided
+            if settings.subscription_id and settings.resource_group and settings.ai_hub_name and settings.ai_project_name:
+                logger.info(f"Setting project context: {settings.subscription_id}/{settings.resource_group}/{settings.ai_hub_name}/{settings.ai_project_name}")
+                client._scope = f"/subscriptions/{settings.subscription_id}/resourceGroups/{settings.resource_group}/providers/Microsoft.MachineLearningServices/aigalleries/{settings.ai_hub_name}/aiprojects/{settings.ai_project_name}"
+            
+            return client
             
         except Exception as e:
             logger.error(f"Failed to create AI Project client: {str(e)}")
@@ -198,11 +192,22 @@ class SkDeploymentManager:
             # Deploy agent to Azure AI Service
             logger.info(f"Creating agent '{name}' with model '{model}'...")
             
+            # Format tools for agent creation if provided
+            tool_resources = None
+            if tools:
+                tool_resources = []
+                for tool in tools:
+                    tool_resources.append({
+                        "type": "function",
+                        "function_detail": tool["function"]
+                    })
+            
+            # Create agent definition
             agent_definition = await client.agents.create_agent(
-                model=model,
                 name=name,
+                model=model,
                 instructions=instructions,
-                tools=tools if tools else None
+                tools=tool_resources
             )
             
             logger.info(f"Successfully deployed {agent_type} agent with ID: {agent_definition.id}")
@@ -256,17 +261,27 @@ class SkDeploymentManager:
             deployments: Deployment information from deploy_all_agents
             file_path: Path to save the information to
         """
-        # Format deployment info for storage
-        first_agent = next(iter(deployments.values()))
-        
-        info = {
-            "project_host": first_agent["host"],
-            "project_name": "sk-multi-agent-project"
-        }
-        
-        # Add agent IDs
-        for agent_type, deployment in deployments.items():
-            info[f"{agent_type}_agent_id"] = deployment["agent_id"]
+        # Check if deployments is empty
+        if not deployments:
+            logger.warning("No successful deployments to save")
+            info = {
+                "project_host": "unavailable",
+                "project_name": "sk-multi-agent-project",
+                "deployment_status": "failed"
+            }
+        else:
+            # Format deployment info for storage
+            first_agent = next(iter(deployments.values()))
+            
+            info = {
+                "project_host": first_agent.get("host", "unavailable"),
+                "project_name": "sk-multi-agent-project",
+                "deployment_status": "success"
+            }
+            
+            # Add agent IDs
+            for agent_type, deployment in deployments.items():
+                info[f"{agent_type}_agent_id"] = deployment.get("agent_id", "deployment_failed")
         
         # Save to file
         with open(file_path, "w") as f:

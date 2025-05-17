@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The Semantic Kernel (SK) multi-agent system is now ready for deployment. Here's the current status:
+The Semantic Kernel (SK) multi-agent system implementation is now complete with API compatibility issues resolved, but there are challenges with actual deployment to Azure AI Service.
 
 ### Local Implementation (COMPLETE)
 
@@ -13,13 +13,14 @@ All agents have been implemented and tested locally:
 - Calculator Agent: Fully implemented and tested
 - Orchestrator Agent: Fully implemented with proper routing to all specialized agents
 
-### Azure AI Service Setup (IN PROGRESS)
+### Azure AI Service Setup (DONE WITH ISSUES)
 
-The Azure AI Service setup process has been modified:
+The Azure AI Service setup process faced several challenges:
 
 - Created documentation for manual setup using Azure AI Studio (recommended)
 - The CLI-based setup script encountered issues with the Azure CLI resource types
-- Manual creation of resources through Azure AI Studio is now the recommended approach
+- Manual creation of resources through Azure AI Studio was implemented
+- Domain resolution issues with Azure AI Service endpoints (westus.ai.projects.azure.com vs. westus.projectsai.azure.com)
 
 ### Local Testing (COMPLETE)
 
@@ -29,29 +30,31 @@ Local testing has been implemented and verified:
 - Created `test_local_orchestration.py` for orchestration verification
 - All agents function correctly in the local environment
 
-### Azure Deployment (PENDING)
+### Azure Deployment (FACING CHALLENGES)
 
-The Azure deployment is pending completion of the Azure AI Service setup:
+The Azure deployment is facing some technical challenges:
 
-- Deployment scripts are ready but require configured Azure AI Service resources
-- Once Azure AI Studio setup is complete, agents can be deployed using `deploy_sk_agents.py`
+- Updated deployment scripts to use the latest Azure AI Service API
+- Fixed compatibility issues with the AIProjectClient
+- Encountered domain resolution issues with Azure AI Service endpoints
+- Deployed locally for testing but further work needed for cloud deployment
 
 ## Next Steps
 
-1. **Azure AI Studio Setup** (CURRENT TASK):
-   - Follow the guidance in `docs/azure_ai_studio_setup.md` to set up Azure AI Service resources
-   - Update the `.env.ai_service` file with your Azure subscription information
-   - Verify Azure AI Hub and Project are created successfully
+1. **Resolve Azure AI Service Connectivity Issues**:
+   - Verify Azure AI Service endpoint configurations
+   - Validate connectivity to Azure AI Service from within the development environment
+   - Consider using an Azure VM to eliminate potential connectivity/DNS issues
 
-2. **Azure Deployment**:
-   - After Azure AI Service setup, run `python src/scripts/deploy_sk_agents.py` to deploy all agents
-   - Verify deployment success by checking `sk_deployment_info.json`
-   - Test interaction with deployed agents using `python src/scripts/interact_sk_agents.py`
+2. **Alternative Deployment Options**:
+   - Focus on local testing with `deploy_local_sk_agents.py` and `test_local_orchestration.py`
+   - Consider alternative deployment targets if Azure AI Service connectivity issues persist
+   - Explore using Semantic Kernel's OpenAI or Azure OpenAI connectors instead
 
-3. **Deployment Verification**:
-   - Test delegation works correctly with deployed agents
-   - Verify orchestration works in the cloud environment
-   - Ensure all specialized agents respond correctly
+3. **Complete Local Testing and Documentation**:
+   - Run comprehensive local testing of all agents and orchestration
+   - Document remaining issues with Azure AI Service deployment
+   - Provide workarounds and alternative implementation approaches
 
 ## Troubleshooting
 
