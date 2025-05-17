@@ -252,9 +252,56 @@ class AiFoundryClient:
                         
                         # Handle tool calls if needed
                         if status == "requires_action" and run_status_data.get("required_action", {}).get("type") == "submit_tool_outputs":
-                            # Process tool calls - this would normally handle function calling
-                            # For brevity, we're not implementing full tool handling in this example
-                            logger.warning("Tool calls received but not implemented in this client")
+                            # Extract tool calls
+                            tool_calls = run_status_data.get("required_action", {}).get("submit_tool_outputs", {}).get("tool_calls", [])
+                            logger.info(f"Processing {len(tool_calls)} tool calls")
+                            
+                            # Process each tool call
+                            tool_outputs = []
+                            for tool_call in tool_calls:
+                                tool_call_id = tool_call.get("id")
+                                function_name = tool_call.get("function", {}).get("name")
+                                function_args = json.loads(tool_call.get("function", {}).get("arguments", "{}"))
+                                
+                                logger.info(f"Processing tool call: {function_name} with args: {function_args}")
+                                
+                                if function_name == "GetWeather":
+                                    location = function_args.get("location", "Seattle, WA")
+                                    weather_type = function_args.get("type", "current")
+                                    # Simulate weather response
+                                    output = f"Weather data for {location} ({weather_type}): Temperature: 72°F, Condition: Sunny"
+                                    
+                                elif function_name == "Calculate":
+                                    expression = function_args.get("expression", "")
+                                    try:
+                                        # Simple evaluation (CAUTION: In production, use a safer method)
+                                        result = eval(expression)
+                                        output = f"Result of {expression} = {result}"
+                                    except Exception as calc_error:
+                                        output = f"Error calculating {expression}: {str(calc_error)}"
+                                else:
+                                    output = f"Unsupported function: {function_name}"
+                                
+                                # Add to tool outputs
+                                tool_outputs.append({
+                                    "tool_call_id": tool_call_id,
+                                    "output": output
+                                })
+                            
+                            # Submit tool outputs
+                            submit_url = f"{base_url}/threads/{self.thread_id}/runs/{run_id}/submit_tool_outputs?api-version={self.api_version}"
+                            submit_payload = {
+                                "tool_outputs": tool_outputs
+                            }
+                            
+                            async with aiohttp.ClientSession() as session:
+                                async with session.post(submit_url, headers=headers, json=submit_payload) as response:
+                                    if response.status >= 400:
+                                        error_text = await response.text()
+                                        logger.error(f"Error submitting tool outputs: {error_text}")
+                                        raise Exception(f"Failed to submit tool outputs: {response.status} - {error_text}")
+                                    
+                                    logger.info(f"Successfully submitted {len(tool_outputs)} tool outputs")
                         
                         # Print a waiting animation
                         print(".", end="", flush=True)
@@ -289,12 +336,19 @@ class AiFoundryClient:
                     
                     # Get the latest message
                     latest_message = assistant_messages[0]  # First is most recent
+                    logger.debug(f"Latest message content structure: {latest_message}")
                     response_text = ""
                     
                     # Process content parts
                     for content_part in latest_message.get("content", []):
                         if content_part.get("type") == "text":
-                            response_text += content_part.get("text", "")
+                            text_value = content_part.get("text", "")
+                            if isinstance(text_value, dict) and "value" in text_value:
+                                response_text += text_value["value"]
+                            elif isinstance(text_value, str):
+                                response_text += text_value
+                            else:
+                                response_text += str(text_value)
                     
                     return response_text
         except Exception as e:
