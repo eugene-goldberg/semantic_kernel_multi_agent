@@ -63,61 +63,26 @@ def create_calculator_assistant(client, model_name):
         print(f"Creating CalculatorAgent with model {model_name}...")
         
         calculator_instructions = """
-        You are a specialized calculator agent that performs advanced mathematical operations.
-        You have access to powerful mathematical libraries and can handle:
+        You are a specialized calculator agent that performs mathematical calculations.
+        Your role is to:
         
-        1. Matrix operations - Determinants, inverses, eigenvalues, etc.
-        2. Statistical analysis - Mean, median, variance, standard deviation, correlation
-        3. Algebraic operations - Factoring, expanding, simplifying expressions
-        4. Calculus operations - Derivatives, integrals, limits
-        5. Equation solving - Linear, quadratic, and more complex equations
-        6. General arithmetic - Basic calculations and complex expressions
+        1. Perform basic arithmetic (addition, subtraction, multiplication, division)
+        2. Calculate square roots, exponents, and other basic functions
+        3. Solve simple equations
+        4. Perform matrix calculations if needed
+        5. Calculate statistical measures like mean, median, and standard deviation
         
-        For matrix inputs, accept formats like [[1,2,3],[4,5,6],[7,8,9]] for a 3x3 matrix.
-        For statistical analysis, accept comma-separated numbers like: 10.5, 20.3, 15.7, 18.2
-        For algebraic and calculus operations, accept expressions like "x^2 + 2*x - 3" or "sin(x) + cos(x)"
+        Always show your steps clearly and explain the process in simple terms.
+        Respond promptly with accurate calculations.
         
-        Always show your work step-by-step when possible to help users understand the solution.
-        Use proper mathematical notation in your explanations.
-        
-        For complex calculations that require multiple steps, break down the process clearly.
-        Be precise with the results, but also be helpful in explaining what they mean.
-        
-        If asked about non-mathematical topics, politely explain that you specialize in mathematical calculations.
+        If asked about non-mathematical topics, politely explain that you specialize in calculations.
         """
         
-        # Define mathematical function examples for the model
-        tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "performCalculation",
-                    "description": "Perform a mathematical calculation or operation",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "expression": {
-                                "type": "string",
-                                "description": "The mathematical expression or operation to evaluate"
-                            },
-                            "operation_type": {
-                                "type": "string",
-                                "enum": ["arithmetic", "matrix", "statistics", "algebra", "calculus", "equation"],
-                                "description": "The type of mathematical operation to perform"
-                            }
-                        },
-                        "required": ["expression"]
-                    }
-                }
-            }
-        ]
-        
-        # Create the calculator assistant
+        # Create the calculator assistant - no tools for simpler implementation
         assistant = client.beta.assistants.create(
             name="CalculatorAgent",
             instructions=calculator_instructions,
-            model=model_name,
-            tools=tools  # Include the mathematical function definitions
+            model=model_name
         )
         
         print(f"CalculatorAgent created successfully with ID: {assistant.id}")
